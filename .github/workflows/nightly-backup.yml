@@ -1,0 +1,24 @@
+name: n8n Nightly Backup
+on:
+  schedule:
+    - cron: "30 10 * * *"
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into server and run backup script
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.N8N_DIR }}"
+            chmod +x scripts/backup_volumes.sh || true
+            export BACKUP_IMAGE="${{ secrets.BACKUP_IMAGE || 'docker.m.daocloud.io/library/alpine:3.18' }}"
+            export RETAIN_DAYS="${{ secrets.RETAIN_DAYS || 7 }}"
+            ./scripts/backup_volumes.sh
+            echo "✅ Backup finished on $(hostname) at $(date -u +%F\ %T)Z"

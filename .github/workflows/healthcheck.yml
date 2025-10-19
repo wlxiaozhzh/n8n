@@ -1,0 +1,24 @@
+name: n8n Healthcheck
+on:
+  push:
+    branches: ["master","deployment"]
+  schedule:
+    - cron: "30 10 * * *"
+  workflow_dispatch:
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into server and run healthcheck script
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.N8N_DIR }}"
+            chmod +x scripts/n8n_healthcheck.sh || true
+            export HEALTHCHECK_URL="${{ secrets.HEALTHCHECK_URL }}"
+            ./scripts/n8n_healthcheck.sh
