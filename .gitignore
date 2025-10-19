@@ -1,0 +1,95 @@
+# ============================
+# 🍎 macOS 系统临时文件
+# ============================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# ============================
+# 🐳 Docker / Compose 临时文件与数据卷
+# ============================
+# 数据卷目录
+n8n_data/
+postgres-data/
+redis-data/
+data/volumes/
+volumes/
+tmp/
+logs/
+*.log
+
+# Docker 生成文件
+docker-compose.override.yml
+docker-compose.local.yml
+.env.local
+.env.backup
+.env.*.bak
+
+# ============================
+# 💾 n8n 自动备份与导出文件
+# ============================
+data/backups/
+*.tar
+*.tar.gz
+*.tgz
+*.sql
+*.sql.gz
+*.dump
+*.sqlite
+
+# n8n 导出的工作流或凭据
+exports/
+backup/
+*.json
+!exports/example.json  # 如果你想保留一个模板例子
+
+# ============================
+# 🔐 环境变量与机密信息
+# ============================
+.env
+.env.*
+!env.example           # 保留示例文件
+
+# ============================
+# 🧠 开发工具相关文件
+# ============================
+# VSCode
+.vscode/
+# JetBrains / WebStorm / PyCharm
+.idea/
+# Python venv / Conda
+venv/
+.envrc
+__pycache__/
+*.pyc
+
+# ============================
+# 📦 Git / 临时缓存文件
+# ============================
+.gitignore~
+*.swp
+*.bak
+*.tmp
+*.old
+
+# ============================
+# 🧰 可执行脚本及工具
+# ============================
+# 可保留 init_orbn8n_git.sh（所以不忽略）
+# 如有其他自动化临时脚本：
+scripts/tmp/
+*.sh~
+data/backups/
+.env
+n8n_data/
+postgres-data/
+redis-data/
+data/backups/
+*.zip
+*.tar
+*.tar.gz
+data/custom_disabled/

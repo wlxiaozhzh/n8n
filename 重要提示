@@ -1,0 +1,85 @@
+
+#1、从未在这个文件夹初始化过 Git
+
+
+cd /Users/renzhiqiang/orb-n8n
+
+# 初始化新的 git 仓库
+git init
+
+# 将 compose 与 .env 加入版本控制
+git add docker-compose.yml .env
+
+# 首次提交
+git commit -m "init: baseline config for orb-n8n (compose + env)"
+
+#接下来每次修改后再：
+git add .
+git commit -m "update: 修改说明"
+
+#当系统运行稳定、确认版本可用时，打个标签，方便回滚：
+git tag -a release-2025-10-19 -m "稳定版 2025-10-19"
+
+#之后如果配置坏了，只需：
+git checkout release-2025-10-19 -- docker-compose.yml .env
+
+
+#2、之前是从某个 Git 仓库复制出来的文件
+#   那 .git 目录可能没被拷贝（常见于 cp 或下载 zip 包的情况）。
+
+#   验证：
+ls -a /Users/renzhiqiang/orb-n8n | grep .git #如果没看到 .git 目录，说明真的不是仓库。
+
+
+git clone <你的远程仓库地址> orb-n8n  #重新克隆源仓库（如果有）：
+
+cd /Users/renzhiqiang/orb-n8n      #就地重新初始化（效果同前面 1）：
+git init
+git add .
+git commit -m "Recreate git tracking for current stable version"
+
+
+
+
+
+git add .
+git commit -m "update: 调整 redis 连接参数"   #会看到一个新的提交和一个形如 release-2025-10-19 的标签
+git tag -a release-2025-10-20 -m "稳定版"
+
+
+
+
+
+
+
+
+
+
+稳定性更新（Stability Updates）：
+
+- 新增了脚本 `scripts/sync-community-nodes.sh`，用于自动化执行以下操作：  
+  - 离线社区节点包同步  
+  - 备份  
+  - 元数据重新生成  
+  - Postgres 数据库刷新  
+  目的是防止因缺失依赖项再次导致登录页面崩溃（详见 `scripts/sync-community-nodes.sh`）。
+
+- 新增了脚本 `scripts/check-community-nodes.sh`，用于快速比对磁盘上的节点包与数据库中的记录是否一致，并加入了 `pkce-challenge` 安全防护；已验证该脚本能正确报告所有包处于同步状态（详见 `scripts/check-community-nodes.sh`）。
+
+- 在 `notes/community-node-maintenance.md` 中编写了加固后的标准运维流程文档，涵盖“同步 → 重启 → 健康检查”的完整工作流以及各项运维安全措施。
+
+验证（Validation）：
+
+- 已执行：`./scripts/check-community-nodes.sh`
+
+后续步骤（Next Steps）：
+
+1. 今后每次更新社区节点后，请务必依次运行以下两个命令，以确保生产环境稳定安全：  
+   ```bash
+   ./scripts/sync-community-nodes.sh
+   ./scripts/check-community-nodes.sh
+   ```
+
+2. 根据你的工作流是否允许，考虑在 `docker-compose.yml` 中设置以下环境变量，以消除安全警告：  
+   - `N8N_BLOCK_ENV_ACCESS_IN_NODE`  
+   - `N8N_GIT_NODE_DISABLE_BARE_REPOS`

@@ -1,0 +1,23 @@
+.light-note {
+  --background-primary: #f8fafc;
+  --background-primary-alt: #ffffff;
+  --background-secondary: #ffffff;
+  --text-normal: #1f2937;
+}
+
+.light-note .markdown-preview-view,
+.light-note .markdown-source-view {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+.light-note .markdown-preview-view h1,
+.light-note .markdown-preview-view h2,
+.light-note .markdown-preview-view h3 {
+  color: #0f172a !important;
+}
+
+.light-note .markdown-preview-view code {
+  background: #e2e8f0;
+  color: #0f172a;
+}

@@ -1,0 +1,189 @@
+# docker-compose.yml
+# This configuration is optimized for a production-grade n8n deployment,
+# meeting all the requirements for stability, scalability, and security.
+
+x-n8n-env: &n8n-env
+  DB_TYPE: postgresdb
+  DB_POSTGRESDB_HOST: postgres
+  DB_POSTGRESDB_PORT: 5432
+  DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+  DB_POSTGRESDB_USER: ${POSTGRES_USER}
+  DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+  EXECUTIONS_MODE: queue
+  QUEUE_BULL_REDIS_HOST: redis
+  QUEUE_BULL_REDIS_PORT: 6379
+  QUEUE_BULL_REDIS_DB: 0
+  NODE_OPTIONS: --max-old-space-size=2048
+  EXECUTIONS_TIMEOUT: 3600
+  EXECUTIONS_TIMEOUT_MAX: 14400
+  N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+  N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
+  N8N_DIAGNOSTICS_ENABLED: false
+  N8N_VERSION_NOTIFICATIONS_ENABLED: false
+  N8N_HIRING_BANNER_ENABLED: false
+  NO_PROXY: localhost,127.0.0.1,::1,postgres,redis,n8n,n8n-worker
+
+name: n8n
+
+networks:
+  n8n_network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  n8n-data:
+  redis-data:
+
+services:
+  postgres:
+    image: ${REGISTRY_PREFIX:-}postgres:15
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - n8n_network
+
+  redis:
+    image: ${REGISTRY_PREFIX:-}redis:7
+    container_name: n8n-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - n8n_network
+
+  n8n:
+    image: ${REGISTRY_PREFIX:-}n8nio/n8n:1.115.3
+    container_name: n8n-main
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      <<: *n8n-env
+      N8N_RUNNERS_ENABLED: "true"
+      OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: "true"
+      N8N_GIT_NODE_DISABLE_BARE_REPOS: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          node -e "
+          const http = require('http');
+          const req = http.get('http://localhost:5678/healthz', res => {
+            process.exit(res.statusCode === 200 ? 0 : 1);
+          });
+          req.on('error', () => process.exit(1));
+          "
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks:
+      - n8n_network
+
+  n8n-worker:
+    image: ${REGISTRY_PREFIX:-}n8nio/n8n:1.115.3
+    container_name: n8n-worker
+    restart: unless-stopped
+    command: ["worker"]
+    environment:
+      <<: *n8n-env
+      N8N_RUNNERS_ENABLED: "true"
+      OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: "true"
+      N8N_GIT_NODE_DISABLE_BARE_REPOS: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      n8n:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep '[n]8n worker'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks:
+      - n8n_network
+
+  backup:
+    build:
+      context: ./backup
+    image: n8n-backup:1.115.3
+    container_name: n8n-backup
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - ./data/backups:/backups
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      - postgres
+      - n8n
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - n8n_network
