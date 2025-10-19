@@ -43,4 +43,16 @@ __pycache__
 packages/cli/THIRD_PARTY_LICENSES.md
 .coverage
 .nyc_output
-packages/cli/src/commands/export/outputs
+packages/cli/src/commands/export/outputs.env
+.env.*
+n8n_data/
+postgres-data/
+redis-data/
+data/
+backup/
+chat-log/
+community_nodes_metadata/
+volume-backups/
+*.zip
+*.tar
+*.tar.gz
